@@ -1,19 +1,19 @@
 /* Lab 1 Integrated LED system
- * Reads BME688 (SPI) and analog temp sensor (A2) in sync.
+ * Reads BME688 (SPI) and analog tmp36 in sync.
  * Applies EMA smoothing to both, lights LED when they disagree by >= THRESHOLD.
  */
 
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BME680.h"
 
-#define LED          15
-#define ADC_PIN      A2
+#define LED          32
+#define TMP_PIN      A2
 #define BME_SCK       5
 #define BME_MISO     21
 #define BME_MOSI     19
 #define BME_CS       14
 
-#define THRESHOLD    1.0f   // °C difference that triggers LED
+#define THRESHOLD    2.5f   // temp difference that triggers LED
 #define ALPHA        (2.0f / (50 + 1))  // EMA with N=50 equivalent window
 #define SAMPLE_MS    100    // delay between samples
 
@@ -29,7 +29,6 @@ void setup() {
 
   // analog sensor config
   analogReadResolution(12);
-  analogSetPinAttenuation(ADC_PIN, ADC_6db);
 
   // BME688 config
   if (!bme.begin()) {
@@ -48,7 +47,8 @@ void loop() {
   // Read both sensors at the same timestamp
   if (!bme.performReading()) return;
   float bmeTemp    = bme.temperature;
-  float analogTemp = digital_to_celsius(analogRead(ADC_PIN));
+  float analogTemp = readAnalogTempC();
+
 
   // update ema 
   if (!emaInit) { // initialize first reading so we don't start from 0
@@ -71,10 +71,11 @@ void loop() {
   delay(SAMPLE_MS);
 }
 
-float digital_to_celsius(int DN) {
-  // convert ADC reading to °C
-  // ADC_6db attenuation on ESP32 = ~2.1V full scale at 12-bit resolution
-  // sensor output: 0.5V offset + 10mV/°C (TMP36-style)
-  float voltage = (2.1f / 4095.0f) * DN;
-  return (voltage - 0.5f) * 100.0f;
+
+float readAnalogTempC() {
+  uint32_t mV = analogReadMilliVolts(TMP_PIN);  // calibrated reading in millivolts
+  float voltage = mV / 1000.0f;                 // convert to volts
+  return (voltage - 0.5f) * 100.0f;             // TMP36-style: 10mV/°C, 500mV offset at 0°C
 }
+
+
