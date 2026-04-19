@@ -13,9 +13,9 @@ uint32_t maxPulse = 1750;
 const float rpmTarget = 60.0f;
 
 // Start with just Kp nonzero, then add Ki, then Kd.
-const float Kp = 2.0f;   // proportional gain
-const float Ki = 0.5f;   // integral gain
-const float Kd = 0.1f;   // derivative gain
+const float Kp = 1.0f;   // proportional gain
+const float Ki = 0.0f;   // integral gain
+const float Kd = 0.0f;   // derivative gain
 
 float integralSum  = 0;     // running sum of error over time
 float lastError    = 0;     // previous error, for derivative
@@ -34,7 +34,9 @@ uint32_t dutyFromUs(uint32_t pulseUs) {
 
 void IRAM_ATTR onBeamBreak() {
   uint32_t curTime = micros();
-  interval = curTime - lastBlockedTime;
+  uint32_t dt = curTime - lastBlockedTime; 
+  if (dt < 400000) return;                     
+  interval = dt;
   lastBlockedTime = curTime;
   newReading = true;
 }
@@ -64,7 +66,7 @@ void loop() {
 
   // time step (dt) since last PID update 
   uint32_t now = millis();
-  float dt = (now - lastPidTime) / 1000.0f;  // convert ms → seconds
+  float dt = (now - lastPidTime) / 1000.0f;  //  ms to seconds
   lastPidTime = now;
   if (dt <= 0) return;  // sanity check
 
